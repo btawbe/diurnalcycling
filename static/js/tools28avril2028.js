@@ -1,0 +1,94 @@
+ function zoomImage(imageId, scaleMultiplier) {
+          const image = document.getElementById(imageId);
+          // Get the current scale from the transform property
+          const currentScale = parseFloat(image.style.transform.replace(/scale\((.*)\)/, '$1')) || 1;
+          const newScale = currentScale * scaleMultiplier;
+          image.style.transform = `scale(${newScale})`;
+      }
+
+  // Function to delete an image
+  function removeImage(containerId) {
+      const container = document.getElementById(containerId);
+      if (container) {
+          container.remove(); // Removes the HTML element from the interface
+      }
+  }
+
+  // Function to reset all images to their original size 
+  function resetImage(imageId) {
+       const image = document.getElementById(imageId);
+       image.style.transform = "scale(1)";
+   }
+
+
+   // Function to rotate an image
+   function rotateImage(imageId, angle) {
+       const image = document.getElementById(imageId);
+       const currentRotation = parseFloat(image.getAttribute('data-rotation') || '0');
+       const newRotation = currentRotation + angle;
+       image.style.transform = `rotate(${newRotation}deg)`;
+       image.setAttribute('data-rotation', newRotation);
+   }
+
+   // Function to display an image in full screen
+   function viewFullScreen(imageId) {
+       const image = document.getElementById(imageId);
+       if (image.requestFullscreen) {
+           image.requestFullscreen();
+       } else if (image.webkitRequestFullscreen) {
+           image.webkitRequestFullscreen();
+       } else if (image.msRequestFullscreen) {
+           image.msRequestFullscreen();
+       }
+   }
+
+//Recuperate all the metals name form the dropdown menu of metals names    
+function getAllMetalsAndLocation() {
+    const selectMetals = document.getElementById('characteristics');
+    const selectLocation = document.getElementById('dropdown4');
+
+    const metals = [];
+    for (let i = 0; i < selectMetals.options.length; i++) {
+        metals.push(selectMetals.options[i].text);
+    }
+
+    const selectedLocation = selectLocation.value; // Récupérer la valeur choisie
+
+    return {
+        metals: metals,
+        location: selectedLocation
+    };
+}
+
+function displayMetalsAndLocationInMap() {
+    const { metals, location } = getAllMetalsAndLocation();
+
+    const container = document.getElementById('metals-container');
+    container.innerHTML = ''; // Vider l'ancien contenu
+
+    // Afficher la localisation choisie
+    const locationTitle = document.createElement('h3');
+    locationTitle.textContent = 'Selected Location: ' + location;
+    container.appendChild(locationTitle);
+
+
+    // Afficher les métaux
+    metals.forEach(metal => {
+        const p = document.createElement('p');
+        p.textContent = metal;
+        container.appendChild(p);
+    });
+}
+
+// Quand la page est chargée
+window.addEventListener('load', function() {
+    displayMetalsAndLocationInMap();
+});
+
+// Quand l'utilisateur change la location
+document.getElementById('dropdown4').addEventListener('change', function() {
+    setTimeout(function() {
+        displayMetalsAndLocationInMap();
+    }, 5000);
+    // <<< ✅ Ajout d'un petit délai de 200ms pour attendre que le dropdown des métaux soit mis à jour
+});
