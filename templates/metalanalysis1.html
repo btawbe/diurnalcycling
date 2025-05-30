@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metal Interpolation</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+<h1> Analysis of Metals</h1>
+{{ mtlname }}
+{{ data_for_name }}
+
+<div id="metalByDate"></div>
+<div id="metalByTime"></div>
+
+<script>
+  alert("AAAA");
+  const metalData = {{ data_for_name|safe }}; // Liste de dictionnaires JS venant du back-end
+
+  const TARGET_METAL = "TOTAL DISSOLVED SOLIDS"; // Le métal à afficher
+  alert(TARGET_METAL);
+  function plotSingleMetalGraph(data, elementId, keyField) {
+    // Filtrer pour garder uniquement le métal ciblé
+    const filtered = data
+      .filter(entry => entry.characteristicname_and_fraction === TARGET_METAL)
+      .map(entry => ({
+        key: entry[keyField]?.trim(),
+        value: parseFloat(entry.resultvalue)
+      }))
+      .filter(entry => entry.key && !isNaN(entry.value));
+
+    if (filtered.length === 0) {
+      console.warn(`No data found for metal: ${TARGET_METAL}`);
+      return;
+    }
+
+    // Moyenne par clé (date ou time)
+    const aggregated = {};
+    const counts = {};
+
+    filtered.forEach(entry => {
+      if (!aggregated[entry.key]) {
+        aggregated[entry.key] = 0;
+        counts[entry.key] = 0;
+      }
+      aggregated[entry.key] += entry.value;
+      counts[entry.key] += 1;
+    });
+
+    const averaged = Object.keys(aggregated).map(key => ({
+      key: key,
+      original: aggregated[key] / counts[key]
+    }));
+
+    // Normalisation
+    const values = averaged.map(d => d.original);
+    const minVal = Math.min(...values);
+    const maxVal = Math.max(...values);
+    const normalized = averaged.map(d => ({
+      key: d.key,
+      value: (maxVal - minVal !== 0) ? (d.original - minVal) / (maxVal - minVal) : 0.5,
+      original: d.original
+    }));
+
+    // Tri par clé
+    normalized.sort((a, b) => a.key.localeCompare(b.key));
+
+    // Tracé
+    const trace = {
+      x: normalized.map(d => d.key),
+      y: normalized.map(d => d.value),
+      text: normalized.map(d => d.original.toFixed(2)),
+      mode: 'lines+markers',
+      type: 'scatter',
+      name: TARGET_METAL,
+      line: { shape: 'spline', color: 'blue' },
+      hovertemplate: `%{x}<br>Normalized Value: %{y:.2f}<br>Original Value: %{text} <extra></extra>`
+    };
+
+    const layout = {
+      title: `Normalized Interpolation of ${TARGET_METAL} by ${keyField}`,
+      xaxis: { title: keyField, tickangle: -45 },
+      yaxis: { title: "Normalized Value (0-1)", showgrid: true },
+      margin: { t: 60 }
+    };
+
+    Plotly.newPlot(elementId, [trace], layout);
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    plotSingleMetalGraph(metalData, 'metalByDate', 'activitystartdate');
+    plotSingleMetalGraph(metalData, 'metalByTime', 'activitystarttime');
+  });
+</script>
+
+</body>
+</html>

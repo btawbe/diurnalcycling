@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Diurnal Cycling Data</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        /* Style for progress bar container */
+        #progress-container {
+            width: 100%;
+            background-color: #f3f3f3;
+            border: 1px solid #ccc;
+            margin: 20px 0;
+            display: none; /* Hidden by default */
+        }
+
+        /* Style for the progress bar itself */
+        #progress-bar {
+            width: 0%;
+            height: 20px;
+            background-color: #4caf50;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+        }
+
+        /* Optional: Spinner style */
+        #spinner {
+            display: none;
+            margin: 10px auto;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .image-container {
+            position: relative;
+            display: inline-block;
+            margin: 5px;
+        }
+        .image-container img {
+            transition: transform 0.2s ease;
+            width: 100%; /* Adjust to fit the container */
+        }
+        .zoom-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            flex-direction: row;
+            gap: 5px;
+        }
+        .zoom-controls button {
+            margin: 2px 0;
+            padding: 5px 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .zoom-controls button:hover {
+            background-color: #faf607;
+        }
+
+        .download-button {
+            margin-left: 10px;
+            padding: 5px 10px;
+            background-color: #007BFF;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .download-button:hover {
+            background-color: #faf607;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .checkbox-container {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .checkbox-item {
+            margin-right: 2em; /* Add space between items */
+            white-space: nowrap; /* Prevent labels from wrapping to the next line */
+        }
+
+    </style>
+
+</head>
+<body style="background-color:#f7f9f9;">
+<div style="width: 100%; border: 3px solid #FFD700; padding: 10px; background-color: black; color: yellow; display: flex; align-items: center; justify-content: space-between;">
+    <!-- Liens à gauche -->
+    <div style="text-align: left;">
+        <a href="/add-location" style="color: yellow; margin-right: 15px; text-decoration: none; font-weight: bold;" onmouseover="this.style.color='white'" onmouseout="this.style.color='yellow'">Add Location</a>
+        <a href="/calculated-parameters" style="color: yellow; margin-right: 15px; text-decoration: none; font-weight: bold;" onmouseover="this.style.color='white'" onmouseout="this.style.color='yellow'">Calculated Parameters</a>
+    </div>
+
+    <!-- Texte centré -->
+    <div style="flex: 1; text-align: center; font-size: 24px; font-weight: bold;">
+        Welcome to Diurnal Cycling Project
+    </div>
+
+    <!-- Liens à droite -->
+    <div style="text-align: right;">
+        <a href="/" style="color: yellow; margin-left: 15px; text-decoration: none; font-weight: bold;" onmouseover="this.style.color='white'" onmouseout="this.style.color='yellow'">Home</a>
+        <a href="/profile" style="color: yellow; margin-left: 15px; text-decoration: none; font-weight: bold;" onmouseover="this.style.color='white'" onmouseout="this.style.color='yellow'">Profile</a>
+        <a href="/help" style="color: yellow; margin-left: 15px; text-decoration: none; font-weight: bold;" onmouseover="this.style.color='white'" onmouseout="this.style.color='yellow'">Help</a>
+    </div>
+    </div>
+    
+    <div  style="width: 100%; border: 3px solid #FFD700; padding: 10px;">
+      <form id="data-form" action="/display" method="post">
+         <div class="mt-4">
+
+             <!-- Conteneur des cases à cocher -->
+             <div class="checkbox-container" id="checkbox-container">
+                 <!-- Les cases à cocher seront générées ici -->
+                   {{ parameters|safe }} 
+            </div>
+         
+        </div>
+
+    <div style="display: flex; width: 100%; margin-left: 2px; margin: 0; padding: 0;">
+        <div style="flex: 25%; margin-right: 2px; margin-left: 1px;">
+            {{ dropdown_html|safe }}
+         <!-- Link to the external JavaScript file -->
+         <script src="{{ url_for('static', filename='js/diurnalcycling.js') }}"></script>
+        </div>
+         <!-- Sous-div droite -->
+         <div style="flex: 75%; background-color: #eaf2f8; padding: 10px; border-radius: 5px;">
+         {% include "map.html" %}
+         </div>
+         <!-- Sous-div droite -->
+     </div>
+
+        <!-- Affichage des valeurs sélectionnées -->
+        <div class="mt-4">
+            {% if season or year or month %}
+               <strong>Season:</strong> {{ season }},&nbsp;<strong>Year:</strong> {{ year }},&nbsp;<strong>Month:</strong> {{ month }},&nbsp;<strong>Day:</strong> {{daycollect}},&nbsp;<strong>Location:</strong> {{ location }}
+            {% endif %}
+        </div>
+    <!-- Progress bar container -->
+    <div id="progress-container">
+        <div id="progress-bar">0%</div>
+    </div>
+    <!-- Spinner -->
+    <div id="spinner"></div>
+    {% if current_url=='http://machinelearningbilallb-397795347.ca-central-1.elb.amazonaws.com/' %}
+        <img src="{{ url_for('static', filename='images/Banner-DanFroese-FishNS-AnnapolisRiver-0863.jpg') }}">
+    {% endif %}
+
+    <!-- Graphs will load here -->
+    <div id="graphs-container">
+        <!-- This will be populated by your server after processing -->
+    </div>
+
+    <script>
+        // Handle form submission to show progress bar
+        const form = document.getElementById('data-form');
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+        const spinner = document.getElementById('spinner');
+        form.addEventListener('submit', function(event) {
+            // Show the progress bar and spinner
+            progressContainer.style.display = 'block';
+            spinner.style.display = 'block';
+            // Simulate progress (this is for demo; remove for real server updates)
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 5;
+                progressBar.style.width = progress + '%';
+                progressBar.textContent = progress + '%';
+                if (progress >= 100) {
+                    clearInterval(interval);
+                }
+            }, 500); // Simulate update every 500ms
+        });
+    </script>
+        <!-- Affichage des données -->
+        <div class="mt-4">
+            {% if (result_df_new  and choicedisplay=='2') or  choicedisplay == '3' %}
+                <h3>parameters data:</h3>
+
+                  <div>{{ result_df_new|safe }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mt-4">
+    {% if (df_sunrise and choicedisplay=='2') or choicedisplay == '3' %}
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Activity Start Date</th>
+                    <th>Result Value</th>
+                    <th>Characteristic Name and Fraction</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in df_sunrise %}
+                    <tr>
+                        <td>{{ item.activitystartdate }}</td>
+                        <td>{{ item.resultvalue }}</td>
+                        <td>{{ item.characteristicname_and_fraction }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+        </div>
+
+
+        <div class="mt-4">
+            {% if (data_metal_new and choicedisplay=='2') or  choicedisplay == '3' %}
+                <h3>Metal Data Average:</h3>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Activity Start Date</th>
+                    <th>Activity Start Time</th>
+                    <th>Result Value</th>
+                    <th>Characteristic Name and Fraction</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in data_metal_new  %}
+                    <tr>
+                        <td>{{ item.activitystartdate }}</td>
+                        <td>{{ item.activitystarttime }}</td>
+                        <td>{{ item.resultvalue }}</td>
+                        <td>{{ item.characteristicname_and_fraction }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+            {% endif %}
+
+        </div>
+    <!-- Les autres éléments de la page -->
+     <div class="mt-4">
+    {% if (data_metal_new and choicedisplay=='1') or choicedisplay == '3' %}
+    <h3>Interpolation Plot</h3>
+
+    {% for plot_image in plot_images %}
+    <div class="image-container"  id="container{{ loop.index }}">
+    <img src="data:image/png;base64,{{ plot_image }}" alt="Graphique" class="zoomable" id="image{{ loop.index }}" style="transform: scale(1);">
+        <div class="zoom-controls">
+        <button onclick="zoomImage('image{{ loop.index }}', 1.1)" title="Maximize">+</button>
+        <button onclick="zoomImage('image{{ loop.index }}', 0.9)" title="Minimize">-</button>
+        <button onclick="removeImage('container{{ loop.index }}')" class="remove-button" title="Remove this image">X</button>
+        <button onclick="rotateImage('image{{ loop.index }}', 10)" title="Rotate clockwise">↻</button>
+        <button onclick="rotateImage('image{{ loop.index }}', -10)" title="Rotate counterclockwise">↺</button>
+        <button onclick="viewFullScreen('image{{ loop.index }}')" title="View fullscreen">⛶</button>
+        <a id="download{{ loop.index }}" href="data:image/png;base64,{{ plot_image }}" download="graphique_{{ loop.index }}.png" style="display: none;"></a>
+        <button onclick="resetImage('image{{ loop.index }}')" title="Reset transformations">R</button>
+        <button onclick="document.getElementById('download{{ loop.index }}').click();" class="download-button" title="Download this image">D</button>
+        <a id="download{{ loop.index }}" href="data:image/png;base64,{{ plot_image }}" download="graphique_{{ loop.index }}.png" style="display: none;"></a>
+        </div>
+    </div>
+
+    {% endfor %}
+    {% endif %}
+    <div class="mt-4">
+    {% if (df_sunrise and choicedisplay=='1') or choicedisplay == '3' %}
+     {% include "dgraphs.html" %}
+    </div>
+    {% endif %}
+    <!-- Link to tools.js -->
+    <script src="{{ url_for('static', filename='js/tools.js') }}"></script>
+    </div>
+
+<script>
+
+// Appel de la fonction avec ta variable locations (déjà injectée depuis le backend)
+document.addEventListener("DOMContentLoaded", function () {
+    const locations = {{ metal_locations | tojson }};
+    filterLocationsByCategory(locations);
+});
+</script>
+
+</body>
+</html>
+

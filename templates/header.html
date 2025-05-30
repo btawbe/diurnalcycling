@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Diurnal Cycling Data</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        /* Style for progress bar container */
+        #progress-container {
+            width: 100%;
+            background-color: #f3f3f3;
+            border: 1px solid #ccc;
+            margin: 20px 0;
+            display: none; /* Hidden by default */
+        }
+
+        /* Style for the progress bar itself */
+        #progress-bar {
+            width: 0%;
+            height: 20px;
+            background-color: #4caf50;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+        }
+
+        /* Optional: Spinner style */
+        #spinner {
+            display: none;
+            margin: 10px auto;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .image-container {
+            position: relative;
+            display: inline-block;
+            margin: 5px;
+        }
+        .image-container img {
+            transition: transform 0.2s ease;
+            width: 100%; /* Adjust to fit the container */
+        }
+        .zoom-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            flex-direction: row;
+            gap: 5px;
+        }
+        .zoom-controls button {
+            margin: 2px 0;
+            padding: 5px 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .zoom-controls button:hover {
+            background-color: #faf607;
+        }
+
+        .download-button {
+            margin-left: 10px;
+            padding: 5px 10px;
+            background-color: #007BFF;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .download-button:hover {
+            background-color: #faf607;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+    </style>
+
+</head>
+<body style="background-color:#f7f9f9;">
+<div style="width: 100%; border: 3px solid #FFD700; padding: 10px; background-color: black; color: yellow; display: flex; align-items: center; justify-content: space-between;">
+    <!-- Liens à gauche -->
+    <div style="text-align: left;">
+        <a href="/add-location" style="color: yellow; margin-right: 15px; text-decoration: none; font-weight: bold;" onmouseover="this.style.color='white'" onmouseout="this.style.color='yellow'">Add Location</a>
+        <a href="/calculated-parameters" style="color: yellow; margin-right: 15px; text-decoration: none; font-weight: bold;" onmouseover="this.style.color='white'" onmouseout="this.style.color='yellow'">Calculated Parameters</a>
+    </div>
+
+    <!-- Texte centré -->
+    <div style="flex: 1; text-align: center; font-size: 24px; font-weight: bold;">
+        Welcome to Diurnal Cycling Project
+    </div>
+
+    <!-- Liens à droite -->
+    <div style="text-align: right;">
+        <a href="/" style="color: yellow; margin-left: 15px; text-decoration: none; font-weight: bold;" onmouseover="this.style.color='white'" onmouseout="this.style.color='yellow'">Home</a>
+        <a href="/profile" style="color: yellow; margin-left: 15px; text-decoration: none; font-weight: bold;" onmouseover="this.style.color='white'" onmouseout="this.style.color='yellow'">Profile</a>
+        <a href="/help" style="color: yellow; margin-left: 15px; text-decoration: none; font-weight: bold;" onmouseover="this.style.color='white'" onmouseout="this.style.color='yellow'">Help</a>
+    </div>
+</div>
+<div style="width: 100%; box-sizing: border-box; padding: 10px; display: flex;">
+
+
+

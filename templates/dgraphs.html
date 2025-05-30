@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sunrise, Sunset, Local noon</title>
+ <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+<div id="metalGraph"></div>
+<button id="downloaMetalBtn">Download Metal Data</button>
+<div id="sunriseGraph"></div>
+<button id="downloadSunriseBtn">Download Sunrise Data</button>
+<div id="sunsetGraph"></div>
+<button id="downloadSunsetBtn">Download Sunset Data</button>
+<div id="noonGraph"></div>
+<button id="downloadNoonBtn">Download Local Noon Data</button>
+<div id="graphsContainer"></div>
+<div id="combinedGraph"></div>
+<div id="combinedGraphWithTime"></div>
+<script>
+// Récupération des dataframes rendus par Jinja
+const sunriseData = {{ df_sunrise|safe }}; // Le dataframe rendu en JSON
+const mtlData = {{ data_metal_new|safe }}; // Le dataframe rendu en JSON
+const sunRiseData = [];
+const sunSetData = [];
+const localNoonData = [];
+var metalname;
+const metalData = []; // Tableau pour stocker le reste des données
+// Trier les données dans les bons tableaux
+mtlData.forEach(entry => {
+   metalData.push({date: entry.activitystartdate, value: entry.resultvalue, timem: entry.activitystarttime});
+   metalname = entry.characteristicname_and_fraction;
+});
+// Trier les données dans les bons tableaux
+sunriseData.forEach(entry => {
+    if (entry.characteristicname_and_fraction === 'Sun Rise') {
+        sunRiseData.push({ date: entry.activitystartdate, time: entry.resultvalue });
+    } else if (entry.characteristicname_and_fraction === 'Sun Set') {
+        sunSetData.push({ date: entry.activitystartdate, time: entry.resultvalue });
+    } else if (entry.characteristicname_and_fraction === 'Local Noon') {
+        localNoonData.push({ date: entry.activitystartdate, time: entry.resultvalue });
+    } 
+
+});
+let button = document.getElementById("downloadSunriseBtn");
+if (!sunRiseData || sunRiseData.length === 0) { button.style.display = "none";}
+button = document.getElementById("downloadSunsetBtn");
+if (!sunSetData || sunSetData.length === 0) { button.style.display = "none";}
+button = document.getElementById("downloadNoonBtn");
+if (!localNoonData || localNoonData.length === 0) { button.style.display = "none";}
+button = document.getElementById("downloaMetalBtn");
+if (!metalData || metalData.length === 0) { button.style.display = "none";}
+// Objet pour stocker dynamiquement les données par characteristicname_and_fraction
+const categorizedData = {};
+
+// Trier les données dynamiquement
+sunriseData.forEach(entry => {
+    const key = entry.characteristicname_and_fraction;
+
+    // Si la clé n'existe pas encore dans l'objet, on la crée avec un tableau vide
+    if (!categorizedData[key]) {
+        categorizedData[key] = [];
+    }
+
+    // Ajouter l'entrée au tableau correspondant
+    categorizedData[key].push({
+        date: entry.activitystartdate,
+        value: entry.resultvalue,
+        timem: entry.activitystarttime
+    });
+});
+
+// Fonction pour tracer les données
+function plotSunData(sunData, elementId, title, color) {
+    // let dates = sunData.map(entry => entry.date);
+    // Trier les données par date pour éviter le désordre sur l'axe X
+    let sortedData = sunData.map(entry => ({
+        date: entry.date.trim(),  // Enlever les espaces potentiels
+        time: entry.time
+    })).sort((a, b) => new Date(a.date) - new Date(b.date)); // Tri par date
+
+    let dates = sortedData.map(entry => entry.date); // Garder le format YYYY-MM-DD
+
+
+    let times = sortedData.map(entry => {
+        let [hh, mm] = entry.time.split(":").slice(0, 2).map(Number);
+        return hh * 60 + mm;
+    });
+
+    let trace = {
+        x: dates,
+        y: times,
+        mode: 'lines+markers',
+        type: 'scatter',
+        name: title,
+        marker: { color: color, size: 8 },
+        line: { color: color, shape: 'spline', smoothing: 1.3 },
+        text: times.map(mins => {
+            let hh = Math.floor(mins / 60);
+            let mm = mins % 60;
+            return `${hh}:${mm.toString().padStart(2, '0')}`;
+        }),
+        hovertemplate: '%{x}<br>Time:%{text}<extra></extra>'
+    };
+
+    let minTime = Math.min(...times);
+    let maxTime = Math.max(...times);
+    let tickvals = [];
+    for (let t = Math.floor(minTime / 60) * 60; t <= maxTime; t += 60) {
+        tickvals.push(t);
+    }
+
+    let layout = {
+        title: title,
+        xaxis: {
+            title: 'Date',
+            type: 'category',
+            showgrid: false,
+            tickangle: -45,
+        },
+        yaxis: {
+            title: 'Time (hh:mm)',
+            tickvals: tickvals,
+            ticktext: tickvals.map(mins => {
+                let hh = Math.floor(mins / 60);
+                return `${hh}:00`;
+            }),
+        },
+    };
+
+    // Ensure the DOM is ready before plotting
+    document.addEventListener("DOMContentLoaded", function () {
+        let graphElement = document.getElementById(elementId);
+        if (graphElement) {
+            //Plotly.newPlot(elementId, [trace], layout);
+            Plotly.react(elementId, [trace], layout);
+        } else {
+            console.error(`Error: '${elementId}' element not found!`);
+        }
+    });
+}
+
+function plotWaterData(waterData, elementId, title, color) {
+    //let dates = waterData.map(entry => entry.date);
+
+
+// Trier les données par date avant d'extraire les valeurs
+let sortedData = waterData.map(entry => ({
+    date: entry.date.trim(),  // Supprime les espaces potentiels
+    value: parseFloat(entry.value) // Convertit en nombre
+})).sort((a, b) => new Date(a.date) - new Date(b.date)); // Tri par date
+
+// Extraire les dates et valeurs après tri
+let dates = sortedData.map(entry => entry.date);
+
+    let values = sortedData.map(entry => {
+        let num = parseFloat(entry.value); 
+        return isNaN(num) ? null : num; // Remplace les valeurs invalides par null
+    });
+    let trace = {
+        x: dates,
+        y: values,
+        mode: 'lines+markers',
+        type: 'scatter',
+        name: title,
+        marker: { color: color, size: 8 },
+        line: { color: color, shape: 'spline', smoothing: 1.3 },
+        text: values.map(v => v !== null ? v.toFixed(2) : "N/A"), // Évite l'erreur
+        hovertemplate: '%{x}<br>Value: %{text} <extra></extra>'
+    };
+   
+    let layout = {
+        title: title,
+        xaxis: {
+            title: 'Date',
+            type: 'category',
+            showgrid: false,
+            tickangle: -45,
+        },
+        yaxis: {
+            title: 'Value',
+            showgrid: true,
+        }
+    };
+
+    // Ensure the DOM is ready before plotting
+    document.addEventListener("DOMContentLoaded", function () {
+        let graphElement = document.getElementById(elementId);
+        if (graphElement) {
+            Plotly.react(elementId, [trace], layout);
+        } else {
+            console.error(`Error: '${elementId}' element not found!`);
+        }
+    });
+}
+
+// Début de la fonction CombinedDataTime
+function plotCombinedDataByKey(metalData, categorizedData, elementId, keyField) {
+    let traces = [];
+
+    // Fonction pour calculer la moyenne des valeurs par clé (ex: date ou time)
+    function aggregateAverage(data) {
+        let sums = {};
+        let counts = {};
+
+        data.forEach(entry => {
+            let key = entry[keyField].trim();
+            let value = parseFloat(entry.value);
+            if (!isNaN(value)) {
+                if (!sums[key]) {
+                    sums[key] = 0;
+                    counts[key] = 0;
+                }
+                sums[key] += value;
+                counts[key] += 1;
+            }
+        });
+
+        return Object.keys(sums).map(key => ({
+            key: key,
+            originalValue: sums[key] / counts[key]
+        }));
+    }
+
+    // Fonction de normalisation
+    function normalizeData(data) {
+        let values = data.map(entry => entry.value);
+        let minVal = Math.min(...values);
+        let maxVal = Math.max(...values);
+        return data.map(entry => ({
+            key: entry[keyField].trim(),
+            value: (maxVal - minVal !== 0) ? (entry.value - minVal) / (maxVal - minVal) : 0.5
+        }));
+    }
+
+    // Clés uniques dans les données métal
+    let metalKeys = new Set(metalData.map(entry => entry[keyField].trim()));
+
+    // Normalisation et tri des données métal
+    let sortedMetalData = metalData
+        .map(entry => ({
+            [keyField]: entry[keyField].trim(),
+            value: parseFloat(entry.value)
+        }))
+        .filter(entry => !isNaN(entry.value))
+        .sort((a, b) => a[keyField].localeCompare(b[keyField]));
+
+    let averagedMetalData = aggregateAverage(sortedMetalData);
+    let normalizedMetalData = normalizeData(
+        averagedMetalData.map(entry => ({
+            [keyField]: entry.key,
+            value: entry.originalValue
+        }))
+    );
+
+    normalizedMetalData.sort((a, b) => a.key.localeCompare(b.key));
+    averagedMetalData.sort((a, b) => a.key.localeCompare(b.key));
+
+    let metalTrace = {
+        x: normalizedMetalData.map(entry => entry.key),
+        y: normalizedMetalData.map(entry => entry.value),
+        mode: 'lines+markers',
+        type: 'scatter',
+        name: 'Metal Data',
+        line: { color: 'blue', shape: 'spline' },
+        text: averagedMetalData.map(v => v.originalValue.toFixed(2)),
+        hovertemplate: `%{x}<br>Normalized Value: %{y:.2f}<br>Original Value: %{text} <extra></extra>`
+    };
+    traces.push(metalTrace);
+
+    // Tracer les autres catégories avec moyenne par clé
+    for (const key in categorizedData) {
+        if (key !== "Sun Rise" && key !== "Sun Set" && key !== "Local Noon") {
+            // 1. Extraire et convertir les données
+            let rawCategoryData = categorizedData[key]
+                .map(entry => ({
+                    [keyField]: entry[keyField].trim(),
+                    value: parseFloat(entry.value)
+                }))
+                .filter(entry => metalKeys.has(entry[keyField]) && !isNaN(entry.value));
+
+            // 2. Moyenne par clé
+            let averagedData = aggregateAverage(rawCategoryData);
+
+            // 3. Normalisation
+            let normalizedCategoryData = normalizeData(
+                averagedData.map(entry => ({
+                    [keyField]: entry.key,
+                    value: entry.originalValue
+                }))
+            );
+
+            // 4. Tri
+            normalizedCategoryData.sort((a, b) => a.key.localeCompare(b.key));
+            averagedData.sort((a, b) => a.key.localeCompare(b.key));
+
+            if (normalizedCategoryData.length > 0) {
+                let categoryTrace = {
+                    x: normalizedCategoryData.map(entry => entry.key),
+                    y: normalizedCategoryData.map(entry => entry.value),
+                    mode: 'lines+markers',
+                    type: 'scatter',
+                    name: key,
+                    marker: { size: 8 },
+                    line: { shape: 'spline' },
+                    text: averagedData.map(v => v.originalValue.toFixed(2)),
+                    hovertemplate: `%{x}<br>Normalized Value: %{y:.2f}<br>Original Value: %{text} <extra></extra>`
+                };
+                traces.push(categoryTrace);
+            }
+        }
+    }
+
+    //Replace timem par Time
+    if (keyField === 'timem') {
+        keyField = 'Time';
+    }
+    let layout = {
+        title: `Filtered & Normalized Combined Data by ${keyField}`,
+        xaxis: { title: keyField, type: 'category', tickangle: -45 },
+        yaxis: { title: 'Normalized Value (0-1)', showgrid: true },
+    };
+
+    document.addEventListener("DOMContentLoaded", function () {
+        let graphElement = document.getElementById(elementId);
+        if (graphElement) {
+            Plotly.react(elementId, traces, layout);
+        } else {
+            console.error(`Error: '${elementId}' element not found!`);
+        }
+    });
+}
+
+
+//Fin de la fonction CombinedDataTime
+
+
+//This function is used for sunrise,sunset and local noon data
+function setupDownloadButton(buttonId, data, filename) {
+    document.getElementById(buttonId).addEventListener("click", function () {
+        downloadCSV(data, filename);
+    });
+    
+}
+
+function downloadCSV(data, filename) {
+    let csvContent = "Date,Time\n";
+    data.forEach(entry => {
+        csvContent += `${entry.date},${entry.time}\n`;
+    });
+
+    let blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    let url = URL.createObjectURL(blob);
+    let a = document.createElement("a");
+    a.setAttribute("href", url);
+    a.setAttribute("download", filename);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+//This function is used for metals and other  data
+function setupDownloadButtonn(buttonId, data, filename) {
+    document.getElementById(buttonId).addEventListener("click", function () {
+        downloadCSVV(data, filename);
+    });
+}
+
+function downloadCSVV(data, filename) {
+    let csvContent = "Date,Value\n";
+    data.forEach(entry => {
+        csvContent += `${entry.date},${entry.value}\n`;
+    });
+
+    let blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    let url = URL.createObjectURL(blob);
+    let a = document.createElement("a");
+    a.setAttribute("href", url);
+    a.setAttribute("download", filename);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+// Call the function for each dataset
+const container = document.getElementById("graphsContainer"); // Conteneur principal
+
+// Boucle pour créer un div pour chaque catégorie
+for (const key in categorizedData) {
+if (key !== "Sun Rise" && key !== "Sun Set" && key !== "Local Noon") {
+    const graphDiv = document.createElement("div"); // Créer un élément div
+    graphDiv.id = `${key}Graph`; // Définir l'ID unique
+    graphDiv.style.width = "100%"; // Optionnel : Ajuste la largeur
+    graphDiv.style.height = "400px"; // Optionnel : Ajuste la hauteur
+    graphDiv.style.marginBottom = "20px"; // Ajoute un espace entre les graphiques
+
+   // const title = document.createElement("h3"); // Créer un titre pour le graph
+   // title.textContent = key; // Ajouter le texte correspondant à la catégorie
+
+    //container.appendChild(title); // Ajouter le titre au conteneur
+    container.appendChild(graphDiv); // Ajouter le div au conteneur
+}
+}
+if (metalData.length > 0) {
+    plotWaterData(metalData, "metalGraph", metalname, "blue");
+    setupDownloadButtonn("downloaMetalBtn", metalData, "metal_data.csv");
+}
+if (sunRiseData.length > 0) {
+    plotSunData(sunRiseData, "sunriseGraph", "Sunrise Times", "orange");
+    setupDownloadButton("downloadSunriseBtn", sunRiseData, "sunrise_data.csv");
+    
+}
+if (sunSetData.length > 0) {
+    plotSunData(sunSetData, "sunsetGraph", "Sunset Times", "red");
+    setupDownloadButton("downloadSunsetBtn", sunSetData, "sunset_data.csv");
+}
+if (localNoonData.length > 0) {
+    plotSunData(localNoonData, "noonGraph", "Local Noon Times", "green");
+    setupDownloadButton("downloadNoonBtn", localNoonData, "noon_data.csv");
+}
+// Ensuite, appeler plotWaterData pour chaque catégorie
+for (const key in categorizedData) {
+        if (key !== "Sun Rise" && key !== "Sun Set" && key !== "Local Noon") {
+        plotWaterData(categorizedData[key], `${key}Graph`, key, "purple");
+
+        // Sélectionner la div contenant le graphique
+        let graphContainer = document.getElementById(`${key}Graph`);
+
+        if (graphContainer) {
+            // Créer un bouton de téléchargement
+            let downloadBtn = document.createElement("button");
+            downloadBtn.id = `download${key}Btn`;
+            downloadBtn.innerText = `Download ${key} Data`;
+            downloadBtn.style.marginTop = "10px"; // Ajouter un peu d'espace
+            // Ajouter le bouton à la div du graphique
+            graphContainer.appendChild(downloadBtn);
+            // Ajouter deux <br> après la div (à l'extérieur)
+            let br1 = document.createElement("br");
+            // Insérer après la div (donc à l'extérieur)
+            graphContainer.parentNode.insertBefore(br1, graphContainer.nextSibling);
+            // Associer la fonction de téléchargement au bouton
+            setupDownloadButtonn(downloadBtn.id, categorizedData[key], `${key}_data.csv`);
+           } 
+
+        }
+
+}
+
+// Appel de la fonction après le chargement des données
+//plotCombinedData(metalData, categorizedData, "combinedGraph");
+plotCombinedDataByKey(metalData, categorizedData, 'combinedGraph', 'date');
+plotCombinedDataByKey(metalData, categorizedData, 'combinedGraphWithTime', 'timem');
+//plotCombinedDataTime(metalData, categorizedData, "combinedGraphWithTime");
+
+   </script>
+</body>

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map of Canada</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+</head>
+<body>
+    <h6>Map of Canada</h6>
+    <div id="map" style="height: 320px; width: 100%;"></div>
+    <script>
+        // Initialiser la carte une seule fois
+        var map = L.map('map').setView([56.1304, -106.3468], 3.2);
+
+        // Ajouter une couche de tuiles (chargée une seule fois)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://natural-resources.canada.ca/home">NRCAN</a> Diurnal Cycling'
+        }).addTo(map);
+
+        // Créer des groupes de couches pour les marqueurs
+        var provinceLayer = L.layerGroup().addTo(map);
+        var specialLayer = L.layerGroup().addTo(map);
+
+        // Données des provinces
+        var provinces = [
+            { name: "Alberta", coords: [53.9333, -116.5765] },
+            { name: "British Columbia", coords: [53.7267, -127.6476] },
+            { name: "Manitoba", coords: [50.4452, -98.2336] },
+            { name: "New Brunswick", coords: [46.5653, -66.4619] },
+            { name: "Newfoundland and Labrador", coords: [53.1355, -57.6604] },
+            { name: "Nova Scotia", coords: [44.6820, -63.7443] },
+            { name: "Ontario", coords: [51.2538, -85.3232] },
+            { name: "Prince Edward Island", coords: [46.5107, -63.4168] },
+            { name: "Quebec", coords: [52.9399, -73.5491] },
+            { name: "Saskatchewan", coords: [52.9399, -106.4509] },
+            { name: "Northwest Territories", coords: [64.8255, -124.8457] },
+            { name: "Nunavut", coords: [70.2998, -83.1076] },
+            { name: "Yukon", coords: [64.2823, -135.0000] }
+        ];
+
+        // Fonction pour ajouter les provinces sur la carte
+        function addProvinces() {
+            provinces.forEach(function(province) {
+                L.marker(province.coords, { title: province.name }).addTo(provinceLayer)
+                    .bindPopup(`
+                        <b>${province.name}</b><br>
+                        </a>
+                    `);
+            });
+        }
+
+        // Création d'une icône rouge pour les emplacements spéciaux
+        var redIcon = L.icon({
+            iconUrl: 'https://cdn-icons-png.flaticon.com/512/252/252025.png',
+            iconSize: [16, 24],
+            iconAnchor: [24, 41],
+            popupAnchor: [0, -34]
+        });
+
+
+      function updateSpecialLocations(locations) {
+        // Vérifier si les données sont valides
+        if (!locations || !Array.isArray(locations)) {
+            console.error("Les données de metal_locations sont invalides ou non définies !");
+            return;
+        }
+
+        // Nettoyer les marqueurs existants
+        specialLayer.clearLayers();
+
+        // Ajouter tous les emplacements spéciaux
+        locations.forEach((location, index) => {
+            // Vérifier si l'élément a au moins 5 valeurs
+            if (location.length >= 5) {  
+                const lat = parseFloat(location[3]);
+                const lon = parseFloat(location[4]);
+                const name = location[2];
+                const doii = location[1];
+                // Vérifier que les coordonnées sont valides (des nombres)
+                if (!isNaN(lat) && !isNaN(lon)) {
+                    // Ajouter le marqueur si les coordonnées sont valides
+
+
+
+L.marker([lat, lon], { icon: redIcon, title: name })
+    .addTo(specialLayer)
+    .bindPopup(`
+        <b><font color="blue">doi:${doii}</font></b><br>
+        <b><font color="green">Location:${name}</font></b><br>
+    `)
+    .on('click', function () {
+        // Mettre à jour la valeur du menu déroulant et déclencher l'événement "change"
+        $("#dropdown4").val(doii).trigger("change");
+    });
+
+
+
+                } else {
+                    // Afficher un message d'erreur détaillé pour les coordonnées invalides
+                    console.warn(`Coordonnées invalides pour ${name}: [${lat}, ${lon}]`);
+                }
+            } else {
+                // Afficher un message d'erreur détaillé lorsque les données sont incomplètes
+                console.warn(`Format d'emplacement invalide (moins de 5 valeurs) à l'indice ${index}:`, location);
+            }
+        });
+    }
+
+        // Charger les provinces une seule fois
+        addProvinces();
+
+        // Récupérer les données via Jinja ou AJAX
+        var locations = {{ metal_locations | tojson  }};
+        //alert(locations);
+        // Ajouter les marqueurs dynamiques
+        updateSpecialLocations(locations);
+
+    </script>
+</body>
+</html>

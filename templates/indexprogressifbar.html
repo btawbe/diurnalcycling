@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Diurnal Cycling Data</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+    <style>
+        /* Style for progress bar container */
+        #progress-container {
+            width: 100%;
+            background-color: #f3f3f3;
+            border: 1px solid #ccc;
+            margin: 20px 0;
+            display: none; /* Hidden by default */
+        }
+
+        /* Style for the progress bar itself */
+        #progress-bar {
+            width: 0%;
+            height: 20px;
+            background-color: #4caf50;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+        }
+
+        /* Optional: Spinner style */
+        #spinner {
+            display: none;
+            margin: 10px auto;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+
+</head>
+<body style="background-color:#f7f9f9;">
+    <div class="container mt-4">
+        <h2>Welcome to Diurnal Cycling Project</h2>
+        <br>
+        <!-- Formulaire pour les menus déroulants et le bouton -->
+        {{ dropdown_html|safe }}
+
+        <!-- Affichage des valeurs sélectionnées -->
+        <div class="mt-4">
+            {% if season or year or month %}
+                <h4>Selected Values:</h4>
+                <p><strong>Season:</strong> {{ season }}</p>
+                <p><strong>Year:</strong> {{ year }}</p>
+                <p><strong>Month:</strong> {{ month }}</p>
+                <p><strong>Location:</strong> {{ location }}</p>
+            {% endif %}
+        </div>
+    <!-- Progress bar container -->
+    <div id="progress-container">
+        <div id="progress-bar">0%</div>
+    </div>
+
+    <!-- Spinner -->
+    <div id="spinner"></div>
+
+    <!-- Graphs will load here -->
+    <div id="graphs-container">
+        <!-- This will be populated by your server after processing -->
+    </div>
+
+    <script>
+        // Handle form submission to show progress bar
+        const form = document.getElementById('data-form');
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+        const spinner = document.getElementById('spinner');
+
+        form.addEventListener('submit', function(event) {
+            // Show the progress bar and spinner
+            progressContainer.style.display = 'block';
+            spinner.style.display = 'block';
+
+            // Simulate progress (this is for demo; remove for real server updates)
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 10;
+                progressBar.style.width = progress + '%';
+                progressBar.textContent = progress + '%';
+                if (progress >= 100) {
+                    clearInterval(interval);
+                }
+            }, 500); // Simulate update every 500ms
+        });
+    </script>
+        <!-- Affichage des données -->
+        <div class="mt-4">
+            {% if (data_pH and choicedisplay=='2') or  choicedisplay == '1' %}
+                <h3>pH Data Average:</h3>
+                <div>{{ data_pH|safe }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mt-4">
+            {% if (data_temperature and choicedisplay=='2') or  choicedisplay == '1' %}
+                <h3>Temperature Data Average:</h3>
+                <div>{{ data_temperature|safe }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mt-4">
+            {% if (data_metal and choicedisplay=='2') or  choicedisplay == '1' %}
+                <h3>Metal Data Average:</h3>
+                <div>{{ data_metal|safe }}</div>
+            {% endif %}
+        </div>
+    <!-- Les autres éléments de la page -->
+     <div class="mt-4">
+    {% if (data_temperature and choicedisplay=='3') or choicedisplay == '1' %}
+    <h3>Interpolation Plot</h3>
+
+    {% for plot_image in plot_images %}
+    <img src="data:image/png;base64,{{ plot_image }}" alt="Graphique">
+    {% endfor %}
+
+    {% endif %}
+    </div>
+
+
+    </div>
+
+</body>
+</html>
+

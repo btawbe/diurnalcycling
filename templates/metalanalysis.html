@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metal Interpolation</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+<h1> Analysis and dynamics graphs for {{ mtlname }} </h1>
+<div id="metalByDate"></div>
+<div id="metalByTime"></div>
+<script>
+  const TARGET_METAL = "{{ mtlname }}";
+  const metalData = {{ data_for_name | tojson }}; // Injecté depuis Flask/Jinja
+  
+  function plotSingleMetalGraph(data, elementId, keyField, isTime = false) {
+    const filtered = data
+      .filter(entry => entry.characteristicname_and_fraction === TARGET_METAL)
+      .map(entry => ({
+        key: entry[keyField]?.trim(),
+        value: parseFloat(entry.resultvalue)
+      }))
+      .filter(entry => entry.key && !isNaN(entry.value));
+    if (filtered.length === 0) {
+      console.warn(`No data found for metal: ${TARGET_METAL}`);
+      return;
+    }
+
+    // Agrégation par clé (date ou heure)
+    const aggregated = {};
+    const counts = {};
+
+    filtered.forEach(entry => {
+      const key = isTime ? normalizeTime(entry.key) : entry.key;
+      if (!aggregated[key]) {
+        aggregated[key] = 0;
+        counts[key] = 0;
+      }
+      aggregated[key] += entry.value;
+      counts[key] += 1;
+    });
+
+    const averaged = Object.keys(aggregated).map(key => ({
+      key: key,
+      original: aggregated[key] / counts[key]
+    }));
+
+    // Normalisation
+    const values = averaged.map(d => d.original);
+    const minVal = Math.min(...values);
+    const maxVal = Math.max(...values);
+
+    const normalized = averaged.map(d => ({
+      key: d.key,
+      value: (maxVal - minVal !== 0) ? (d.original - minVal) / (maxVal - minVal) : 0.5,
+      original: d.original
+    }));
+
+    // Tri intelligent
+    normalized.sort((a, b) => {
+      if (isTime) {
+        return convertTimeToMinutes(a.key) - convertTimeToMinutes(b.key);
+      }
+      return new Date(a.key) - new Date(b.key);
+    });
+
+    // Tracé
+    const trace = {
+      x: normalized.map(d => d.key),
+      y: normalized.map(d => d.value),
+      text: normalized.map(d => d.original.toFixed(2)),
+      mode: 'lines+markers',
+      type: 'scatter',
+      name: TARGET_METAL,
+      line: { shape: 'spline', color: 'blue' },
+      hovertemplate: `%{x}<br>Normalized: %{y:.2f}<br>Original: %{text} <extra></extra>`
+    };
+
+    const layout = {
+      title: `Normalized Interpolation of ${TARGET_METAL} by ${isTime ? 'Time' : 'Date'}`,
+      xaxis: { title: isTime ? 'Start Time' : 'Start Date', tickangle: -45 },
+      yaxis: { title: "Normalized Value (0-1)", showgrid: true },
+      margin: { t: 60 }
+    };
+
+    Plotly.newPlot(elementId, [trace], layout);
+  }
+
+  // Utilitaire : convertir HH:MM en minutes
+  function convertTimeToMinutes(timeStr) {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + (minutes || 0);
+  }
+
+  // Nettoyage/normalisation de l'heure (ex. enlever les secondes)
+  function normalizeTime(timeStr) {
+    return timeStr?.slice(0, 5); // Garde HH:MM
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    plotSingleMetalGraph(metalData, 'metalByDate', 'activitystartdate', false);
+    plotSingleMetalGraph(metalData, 'metalByTime', 'activitystarttime', true);
+  });
+</script>
+
+</body>
+</html>
